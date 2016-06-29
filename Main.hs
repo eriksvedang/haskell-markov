@@ -4,6 +4,7 @@ import System.Random
 import Control.Monad.State
 import System.IO
 import System.Environment
+import Data.List
 
 type Freq = Int
 type Weights = [(Char, Freq)]
@@ -29,7 +30,7 @@ mappings1 = [('a', [('a', 10)
 -- | Sums up the frequency count of a list of weights.
 -- | i.e. totalFreq [('a',10),('b',7)] => 17
 totalFreq :: [(t, Int)] -> Int
-totalFreq weights = foldl (\total (_, x) -> total + x) 0 weights
+totalFreq weights = foldl' (\total (_, x) -> total + x) 0 weights
 
 -- | Given a list of frequency weigths, find the weight at the position between 0 and the total frequency count.
 -- | i.e. findSlice [('a',10),('b',7)] 12 => Just 'b'
@@ -40,7 +41,7 @@ findSlice weights n =
                        totalIndex' = totalIndex + freq
                        result' = if totalIndex' >= n then (Just c) else Nothing
                    in (totalIndex', result')
-  in snd $ foldl finder (0 :: Int, Nothing) weights
+  in snd $ foldl' finder (0 :: Int, Nothing) weights
 
 nextChar :: Mapping -> Char -> State StdGen Char
 nextChar mapping currentChar =
@@ -76,7 +77,7 @@ analyze input =
         case (lookup c mappings) of
           (Just weights) -> addToAL mappings c (increaseFreq weights next)
           Nothing -> (c, [(next, 1)]) : mappings
-  in foldl folder [] (zip input (tail input))
+  in foldl' folder [] (zip input (tail input))
 
 run randomGen mapping start = evalState (chain mapping start 1200) randomGen
 
