@@ -5,6 +5,7 @@ import Control.Monad.State
 import System.IO
 import System.Environment
 import Data.List
+import Data.Char
 import qualified Data.Map.Strict as Map
 
 type Freq = Int
@@ -38,7 +39,7 @@ nextChar mapping currentChar =
         Just x -> x
         Nothing -> '?'
     Nothing ->
-      return '?'
+      return '.'
 
 chain :: Mapping -> Char -> Int -> State StdGen [Char]
 chain mappings start n = 
@@ -64,7 +65,9 @@ visit mappings (c, next) =
 analyze :: [Char] -> Mapping
 analyze input = foldl' visit Map.empty (zip input (tail input))
 
-run randomGen mapping start = evalState (chain mapping start 120) randomGen
+run randomGen mapping start = evalState (chain mapping start 5000) randomGen
+
+goodChar c = isAlpha c || c == ' '
 
 main :: IO ()
 main = do
@@ -72,9 +75,12 @@ main = do
   args <- getArgs
   text <- case args of
             (file : _) -> readFile file
-            _ -> return "erorikokkk"  
-  --putStrLn (show $ analyze text)
-  let mapping = analyze text
-      result = run g mapping (head text)
-  putStrLn (show result)
+            _ -> return "ajabaja hokus pokus filijokus haha"
+  let goodText = filter goodChar text
+  -- putStrLn goodText
+  -- putStrLn (show $ analyze goodText)
+  -- putStrLn $ show (head goodText)
+  let mapping = analyze goodText
+      result = run g mapping (head goodText)
+  putStrLn result
   
