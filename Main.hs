@@ -12,13 +12,11 @@ type Freq = Int
 type Weights = Map.Map Char Freq
 type Mapping = Map.Map Char Weights
 
--- | Sums up the frequency count of a list of weights.
 totalFreq :: Weights -> Int
 totalFreq weights = Map.foldl' (\total x -> total + x) 0 weights
 
--- | Given a list of frequency weigths, find the weight at the position between 0 and the total frequency count.
-findSlice :: Weights -> Int -> Maybe Char
-findSlice weights n = 
+findCharSlice :: Weights -> Int -> Maybe Char
+findCharSlice weights n = 
   let finder (totalIndex, result) weight = case result of
         Just _ -> (totalIndex, result)
         Nothing -> let (c, freq) = weight
@@ -35,11 +33,11 @@ nextChar mapping currentChar =
       let max = totalFreq weights
           (r, g') = (randomR (0 :: Int, max) g)
       put g'
-      return $ case (findSlice weights r) of
+      return $ case (findCharSlice weights r) of
         Just x -> x
-        Nothing -> '?'
+        Nothing -> error "Failed to find a slice."
     Nothing ->
-      return '.'
+      return '?' -- no entry for the char
 
 chain :: Mapping -> Char -> Int -> State StdGen [Char]
 chain mappings start n = 
@@ -50,20 +48,21 @@ chain mappings start n =
         return (reverse result)       
 
 increaseFreq :: Weights -> Char -> Weights
-increaseFreq weights c =
-  let x = case Map.lookup c weights of
-                 (Just freq) -> freq + 1
-                 Nothing -> 1
-  in Map.insert c x weights
+increaseFreq weights char =
+  let newFreq = case Map.lookup char weights of
+                  (Just freq) -> freq + 1
+                  Nothing -> 1
+  in Map.insert char newFreq weights
 
-visit :: Mapping -> (Char, Char) -> Mapping
-visit mappings (c, next) =
-  case (Map.lookup c mappings) of
-    (Just weights) -> Map.insert c (increaseFreq weights next) mappings
-    Nothing -> Map.insert c (Map.singleton next 1) mappings
+visitChar :: Mapping -> (Char, Char) -> Mapping
+visitChar mappings (currentChar, nextChar) =
+  let newWeights = case (Map.lookup currentChar mappings) of
+                     (Just weights) -> increaseFreq weights nextChar
+                     Nothing -> Map.singleton nextChar 1
+  in Map.insert currentChar newWeights mappings
 
 analyze :: [Char] -> Mapping
-analyze input = foldl' visit Map.empty (zip input (tail input))
+analyze input = foldl' visitChar Map.empty (zip input (tail input))
 
 run randomGen mapping start = evalState (chain mapping start 5000) randomGen
 
@@ -74,13 +73,9 @@ main = do
   g <- newStdGen
   args <- getArgs
   text <- case args of
-            (file : _) -> readFile file
-            _ -> return "ajabaja hokus pokus filijokus haha"
-  let goodText = filter goodChar text
-  -- putStrLn goodText
-  -- putStrLn (show $ analyze goodText)
-  -- putStrLn $ show (head goodText)
-  let mapping = analyze goodText
-      result = run g mapping (head goodText)
+            (file : _) -> fmap (filter goodChar) (readFile file)
+            _ -> return "Ajabaja hokus pokus filijokus haha"
+  let mapping = analyze text
+      result = run g mapping (head text)
   putStrLn result
   
