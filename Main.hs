@@ -5,27 +5,17 @@ import Control.Monad.State
 import System.IO
 import System.Environment
 import Data.List
+import qualified Data.Map.Strict as Map
 
 type Freq = Int
 type Weights = [(Char, Freq)]
-type Mapping = [(Char, Weights)]
+type Mapping = Map.Map Char Weights
 
 addToAL :: Eq key => [(key, elt)] -> key -> elt -> [(key, elt)]
 addToAL l key value = (key, value) : delFromAL l key
 
 delFromAL :: Eq key => [(key, a)] -> key -> [(key, a)]
 delFromAL l key = filter (\a -> (fst a) /= key) l
-
-mappings1 :: Mapping
-mappings1 = [('a', [('a', 10)
-                   ,('b', 7)])
-            ,
-             ('b', [('a', 3)
-                   ,('c', 20)])
-            ,
-             ('c', [('c', 1)])]
-
-(Just freq1) = lookup 'a' mappings1
 
 -- | Sums up the frequency count of a list of weights.
 -- | i.e. totalFreq [('a',10),('b',7)] => 17
@@ -45,7 +35,7 @@ findSlice weights n =
 
 nextChar :: Mapping -> Char -> State StdGen Char
 nextChar mapping currentChar =
-  case (lookup currentChar mapping) of
+  case (Map.lookup currentChar mapping) of
     Just weights -> do
       g <- get
       let max = totalFreq weights
@@ -71,21 +61,24 @@ increaseFreq weights c =
                         (Just freq) -> freq + 1
                         Nothing -> 1
 
-analyze :: [Char] -> Mapping
-analyze input =
-  let folder mappings (c, next) =
-        case (lookup c mappings) of
-          (Just weights) -> addToAL mappings c (increaseFreq weights next)
-          Nothing -> (c, [(next, 1)]) : mappings
-  in foldl' folder [] (zip input (tail input))
+visit :: Mapping -> (Char, Char) -> Mapping
+visit mappings (c, next) =
+  case (Map.lookup c mappings) of
+    (Just weights) -> Map.insert c (increaseFreq weights next) mappings
+    Nothing -> Map.insert c [(next, 1)] mappings
 
-run randomGen mapping start = evalState (chain mapping start 1200) randomGen
+analyze :: [Char] -> Mapping
+analyze input = foldl' visit Map.empty (zip input (tail input))
+
+run randomGen mapping start = evalState (chain mapping start 120) randomGen
 
 main :: IO ()
 main = do
   g <- newStdGen
-  (file : _) <- getArgs
-  text <- readFile file
+  args <- getArgs
+  text <- case args of
+            (file : _) -> readFile file
+            _ -> return "erorikokkk"  
   --putStrLn (show $ analyze text)
   let mapping = analyze text
       result = run g mapping (head text)
